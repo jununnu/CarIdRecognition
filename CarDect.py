@@ -26,7 +26,7 @@ guassianImg = cv2.GaussianBlur(grayImg, (3, 3), 0, 0)
 
 # 边缘检测，低于x1的像素点不会被认为是边缘，高于x2的像素点会被认为是边缘；若在x1与x2之间的像素点是x2像素点的相邻则被认为是边缘
 # @P1：传入图片，@P2：x1，@P3：x2
-cannyImg = cv2.Canny(guassianImg, 30, 200)
+cannyImg = cv2.Canny(guassianImg, 100, 200)
 
 
 '''
@@ -72,27 +72,52 @@ for c in countors:
         screenCnt = approx
         break
 
-print(screenCnt)
-print([screenCnt])
+# 如果检测车牌列表为空，则将detected元素赋0
+if screenCnt is None:
+    detected = 0
+    print("None!")
+else:
+    # 反之为1
+    detected = 1
+
+'''
+ cv2.drawContours：轮廓填充
+ @P1：目标图像，@P2：轮廓坐标，@P3：轮廓索引，负数绘制所有轮廓，@P4：轮廓颜色，@P5：轮廓线条宽度，负数填充轮廓内部
+'''
+if detected:
+    recognizedImg = cv2.drawContours(img, [screenCnt], 0, (0, 0, 255), 2)
+    cv2.imshow("rec", recognizedImg)
+
+
 # 创建一个相同尺寸的黑色背景图
 mask = np.zeros(grayImg.shape, np.uint8)
-# newImage = cv2.drawContours(mask, [screenCnt], -1, (0, 255, 0), -1)
-recognizedImg = cv2.drawContours(mask, [screenCnt], -1, 255, -1)
-recognizedImg = cv2.bitwise_and(img, img, mask=mask)
+cv2.drawContours(mask, [screenCnt], -1, 255, -1)
+'''
+ cv2.bitwise_and：提取图像为，掩膜在输入图像上的图像
+ @P1，@P2：输入图像，@P3:掩膜
+'''
+splitImg = cv2.bitwise_and(img, img, mask=mask)
 
-(x, y) = np.where(mask == 255)
-(topX, topY) = (np.min(x), np.min(y))
-(bottomx, bottomy) = (np.max(x), np.max(y))
-croppedImg = grayImg[topX: bottomx+1, topY:bottomy+1]
+# 获得掩膜为255的x，y两坐标
+x, y = np.where(mask == 255)
+# print(x, y)
+# 获得
+topX, topY = np.min(x), np.min(y)
+# print(topX, topY)
+bottomX, bottomY = np.max(x), np.max(y)
+# 获取灰度图的车牌位置图片
+croppedImg = grayImg[topX: bottomX+1, topY:bottomY+1]
 
 # https://blog.csdn.net/qq_31362767/article/details/107891185
+# 在灰度图上进行OCR识别获得车牌号文本
 text = pytesseract.image_to_string(croppedImg, config='--psm 11')
 print("Detected license plate Number is:", text)
 cv2.imshow('cropped', croppedImg)
-cv2.imshow('recognized', recognizedImg)
-cv2.imshow('canny', cannyImg)
-cv2.imshow('gray', grayImg)
-cv2.imshow("img", img)
+# cv2.imshow('mask', mask)
+# cv2.imshow('split', splitImg)
+# cv2.imshow('canny', cannyImg)
+# cv2.imshow('gray', grayImg)
+# cv2.imshow("img", img)
 
 cv2.waitKey()
 cv2.destroyAllWindows()
